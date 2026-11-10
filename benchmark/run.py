@@ -7,6 +7,7 @@ import time
 import uuid
 from pathlib import Path
 from backend.models.smolvlm import SmolVLM
+from backend.settings import Settings
 from backend.schemas import Context
 from backend.data.images import prepare_image
 from backend.engine.generate import run_generation
@@ -52,4 +53,6 @@ def run(manifest, output, model):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(); parser.add_argument('--manifest', default='benchmark/manifests/pilot.jsonl'); parser.add_argument('--output', default='artifacts/runs/pilot.jsonl')
-    args = parser.parse_args(); model = SmolVLM(); model.load(); run(args.manifest, args.output, model)
+    args = parser.parse_args(); settings = Settings()
+    model = SmolVLM(settings.revision, settings.device, settings.max_tokens); model.load()
+    run(args.manifest, args.output, model)
