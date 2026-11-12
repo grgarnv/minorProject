@@ -2,7 +2,11 @@ import json
 from backend.engine.image_types import GUIDANCE, caption_hint
 from backend.engine.article_context import editorial_context
 
-PROMPT_VERSION = 'ab-6'
+PROMPT_VERSION = 'ab-7'
+SPECIFICITY_RULE = ('DETAIL CHECK: Beyond naming the topic, include at least two distinct, concrete details '
+                    'visible in these pixels, such as appearance, placement, layout, labels or relationships. '
+                    'Choose the most informative details. Include only details the image supports; if fewer '
+                    'are clear, say only what is clear. Do not pad with article facts or general knowledge.')
 COMMON = '''Write a plain-English image description useful to a blind or low-vision reader.
 Help the reader picture this specific image, not just name its subject. For a photograph,
 start with the framing and main subject, then describe visible colors, shapes, textures,
@@ -96,6 +100,7 @@ def build_prompt(context, mode, detail='concise', analysis=None):
             raise ValueError('Unknown generation mode')
     else:
         base = _build_prompt(context, mode, detail)
+    base += '\n' + SPECIFICITY_RULE
     analysis = analysis or {'image_type':caption_hint(context, mode) or 'photo', 'ocr':{'lines':[]}}
     kind = analysis['image_type']
     base += '\nIMAGE TYPE GUIDANCE (' + kind + '): ' + GUIDANCE[kind]

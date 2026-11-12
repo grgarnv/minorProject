@@ -72,6 +72,14 @@ def test_photographs_request_visible_appearance_in_both_modes():
         assert 'do not guess hidden parts' in prompt
     assert '3–5 concrete visual sentences' in build_prompt(context, 'context_aware')
 
+def test_specificity_rule_is_added_to_production_prompt_paths():
+    context = Context(article_title='Test', caption='A chart')
+    for mode in ('image_only', 'context_aware'):
+        for analysis in (None, {'image_type':'chart', 'ocr':{'lines':[]}}):
+            prompt = build_prompt(context, mode, analysis=analysis)
+            assert 'at least two distinct, concrete details' in prompt
+            assert 'Do not pad with article facts or general knowledge' in prompt
+
 
 def test_conservation_graphic_uses_associated_label_without_unrelated_lead_prose():
     context = Context(article_title='Common sunflower', caption='Conservation status: Least Concern (IUCN 3.1)', nearby_text='UNRELATED-LEAD-TEXT')

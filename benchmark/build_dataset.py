@@ -4,7 +4,6 @@ Network failures and exclusions are retained separately; no synthetic context.
 """
 import argparse
 import json
-import os
 import time
 from pathlib import Path
 from urllib.parse import unquote, quote, urljoin
@@ -12,6 +11,7 @@ import httpx
 from bs4 import BeautifulSoup
 from backend.data.images import fetch_image, prepare_image
 from backend.schemas import Context
+from backend.settings import Settings
 
 ARTICLES = [
     ('Common_sunflower', 'photograph'), ('Golden_Gate_Bridge', 'photograph'),
@@ -22,16 +22,22 @@ ARTICLES = [
     ('Volcano', 'photograph'), ('Bar_chart', 'chart')
 ]
 API = 'https://en.wikipedia.org/w/api.php'
-UA = os.environ.get('WIKIMEDIA_USER_AGENT', 'WikiImageAccessibility/0.1 (academic local pilot; configure contact for team use)')
+UA = Settings().user_agent
 
 def plain(node, limit):
     return node.get_text(' ', strip=True)[:limit] if node else None
 
-def collect(output, limit=10):
-    root = Path('artifacts/dataset'); root.mkdir(parents=True, exist_ok=True)
+def collect(output, limit=10, image_dir='artifacts/dataset', sample_prefix='pilot', articles=None):
+    root = Path(image_dir); root.mkdir(parents=True, exist_ok=True)
     records, failures = [], []
+    selected_articles = ARTICLES
+    if articles:
+        by_slug = {slug: category for slug, category in ARTICLES}
+        missing = [slug for slug in articles if slug not in by_slug]
+        if missing: raise ValueError('Unknown article slug(s): ' + ', '.join(missing))
+        selected_articles = [(slug, by_slug[slug]) for slug in articles]
     with httpx.Client(timeout=30, headers={'User-Agent': UA}, follow_redirects=False) as client:
-        for slug, category in ARTICLES:
+        for slug, category in selected_articles:
             if len(records) >= limit: break
             try:
                 r = client.get(API, params={'action': 'parse', 'page': slug.replace('_', ' '), 'prop': 'text|revid', 'format': 'json', 'redirects': 1})
@@ -69,7 +75,7 @@ def collect(output, limit=10):
                                   existing_alt=img.get('alt') if img.has_attr('alt') else None)
                 data = fetch_image(url, UA)
                 image, prepared, digest, animated = prepare_image(data)
-                sample_id = f'pilot-{len(records)+1:02d}'
+                sample_id = f'{sample_prefix}-{len(records)+1:02d}'
                 image_path = root / f'{sample_id}.png'; image_path.write_bytes(prepared)
                 (root / f'{sample_id}.html').write_text(html)
                 records.append({'sample_id': sample_id, 'article_url': 'https://en.wikipedia.org/wiki/' + quote(parsed['title'].replace(' ', '_')),
@@ -94,4 +100,6 @@ def collect(output, limit=10):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(); parser.add_argument('--output', default='benchmark/manifests/pilot.jsonl'); parser.add_argument('--limit', type=int, default=10)
-    args = parser.parse_args(); collect(args.output, args.limit)
+    parser.add_argument('--image-dir', default='artifacts/dataset'); parser.add_argument('--sample-prefix', default='pilot')
+    parser.add_argument('--articles', nargs='*', help='Optional article slugs from ARTICLES, e.g. Volcano Bar_chart')
+    args = parser.parse_args(); collect(args.output, args.limit, args.image_dir, args.sample_prefix, args.articles)

@@ -82,6 +82,33 @@ The ten-example manifest is a development pilot, not a representative or held-ou
 
 The recorded handoff copies are in `benchmark/results/pilot/`. New run outputs: `artifacts/runs/pilot.jsonl`, `artifacts/results/pilot/review.csv`, `comparison.html`, `summary.md`. Copy the CSV separately for each human reviewer; ratings remain blank until actual review. HTML displays real paired text for inspection. No factuality/usefulness gain or statistical significance is inferred from blank ratings.
 
+For a non-overwriting diagnostic run of a new prompt, stop the backend first, then run the benchmark with a new output path. The runner uses the pinned model revision, device and token budget from `.env`:
+
+```sh
+python -m benchmark.run --manifest benchmark/manifests/pilot.jsonl --output artifacts/runs/ab7-pilot.jsonl
+python -m benchmark.analyze --manifest benchmark/manifests/pilot.jsonl --runs artifacts/runs/ab7-pilot.jsonl --output artifacts/results/ab7-pilot
+```
+
+The pilot is for development, not held-out evaluation. To collect separate Volcano and Bar chart examples without overwriting pilot images, configure a contact-bearing `WIKIMEDIA_USER_AGENT` in `.env`, then use:
+
+```sh
+python -m benchmark.build_dataset --articles Volcano Bar_chart --limit 2 --output benchmark/manifests/ab7-fresh.jsonl --image-dir artifacts/dataset/ab7-fresh --sample-prefix ab7-fresh
+python -m benchmark.run --manifest benchmark/manifests/ab7-fresh.jsonl --output artifacts/runs/ab7-fresh.jsonl
+python -m benchmark.analyze --manifest benchmark/manifests/ab7-fresh.jsonl --runs artifacts/runs/ab7-fresh.jsonl --output artifacts/results/ab7-fresh
+```
+
+The fresh collector stores image bytes under the selected image directory and the manifest stores those paths. Review the source licenses and image/context associations before sharing outputs. A two-image run is an initial diagnostic, not a quality claim.
+
+## Output quality: next steps
+
+- [ ] Restart the backend so it loads prompt `ab-7`; refresh the extension and a Wikipedia article, then inspect a new description.
+- [ ] Run the ab-7 pilot commands above and inspect the generated comparison and failures. Treat this as a development check, not held-out evidence.
+- [ ] Ask two reviewers to independently complete `benchmark/results/pilot/review_reviewer_1.csv` and `review_reviewer_2.csv` against the frozen images and source context. Keep their files separate.
+- [ ] Collect the fresh Volcano and Bar chart examples into the separate `ab7-fresh` image directory, inspect their licenses and image/context associations, then run ab-7 on them.
+- [ ] Compare reviewer notes by failure tag: generic wording, omitted visual structure, context copying, unsupported claims, attribution, and text/relationship errors. Keep failed generations in the comparison.
+- [ ] Decide whether ab-7 addresses the largest verified failure. If revising, change one target, increment the prompt version, and evaluate that revision on a new set.
+- [ ] Gather a broader fresh set across photos and information graphics before claiming an overall quality improvement.
+
 For exact reproduction on another machine, copy legally permitted prepared PNGs plus the frozen manifest; live rebuilding may capture newer article/file revisions. Local prepared images/HTML are ignored rather than committed unnecessarily.
 
 ## Tests
